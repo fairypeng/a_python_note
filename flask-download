@@ -1,0 +1,90 @@
+用于记录flask完成下载功能的实现。
+
+一、接口返回真实的文件
+
+from flask import send_file,send_from_directory
+
+@app.route("/download/<filename>",methods=["GET"])
+def dowmload_file(filename):
+    directory = os.getcwd()  # 方法用于返回当前工作目录。
+    return send_from_directory(directory,filename,as_attachment=True)  
+    # 使用Content-Disposition: attachment标题发送此文件，as_attachment设置为True，但是使用这种方式假设file中又中文就会报错
+    # 应该是 from flask import make_response 
+    # response = make_response(send_from_directory(directory,filename,as_attachment=True))
+    # 设置响应头 response.headers["Content-Disposition"] = "attachment;filename={}".format(filename.encode().decode("utf-8"))
+
+二、接口返回文件数据流,这种方法可以接受多个参数下载文件
+from flask import make_response
+import mimetypes
+
+@app.route("/download/<param1>/<param2>/<filename>",methods=["GET"])
+def download_file(param1,param2,filename):
+    datas = Odb.session.query(User).filter().all()
+    if datas:
+        data_list = []
+        for data in datas:
+            data_list.append(user.id)
+    response = make_response(data_list)
+    mime_type = mime_type.guess_type(filename)[0]  # 猜测文件的类型
+    """
+    以下是guess_type()的函数说明
+    Guess the type of a file based on its URL.
+
+        Return value is a tuple (type, encoding) where type is None if
+        the type can't be guessed (no or unknown suffix) or a string
+        of the form type/subtype, usable for a MIME Content-type
+        header; and encoding is None for no encoding or the name of
+        the program used to encode (e.g. compress or gzip).  The
+        mappings are table driven.  Encoding suffixes are case
+        sensitive; type suffixes are first tried case sensitive, then
+        case insensitive.
+
+        The suffixes .tgz, .taz and .tz (case sensitive!) are all
+        mapped to '.tar.gz'.  (This is table-driven too, using the
+        dictionary suffix_map.)
+
+        Optional `strict' argument when False adds a bunch of commonly found,
+        but non-standard types.
+    """
+    response.headers['Content-Type'] = mime_type
+    response.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename.encode().decode('utf-8'))
+    return response
+    
+   三、发送静态文件
+from flask import app
+import os
+
+@app.route("/download/<filepath>", methods=['GET'])
+def download_file(filepath):
+    # 此处的filepath是文件的路径，但是文件必须存储在static文件夹下， 比如images\test.jpg
+    return app.send_static_file(filepath)  
+
+
+前端的下载实现
+var starttime = '20190814';
+var endtime = '20190823';
+var url = '/download/usage/' + starttime + '/' + endtime + '/usageReport.xls';
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);        // 也可以使用POST方式，根据接口
+        xhr.responseType = "blob";    // 返回类型blob
+        // 定义请求完成的处理函数，请求前也可以增加加载框/禁用下载按钮逻辑
+        xhr.onload = function () {
+            // 请求完成
+            if (this.status === 200) {
+                // 返回200
+                var blob = this.response;
+                var reader = new FileReader();
+                reader.readAsDataURL(blob);    // 转换为base64，可以直接放入a表情href
+                reader.onload = function (e) {
+                    // 转换完成，创建一个a标签用于下载
+                    var a = document.createElement('a');
+                    a.download = 'usageReport.xls';
+                    a.href = e.target.result;
+                    $("body").append(a);    // 修复firefox中无法触发click
+                    a.click();
+                    $(a).remove();
+                }
+            } else {
+                layer.msg("下载失败")
+            }
+  
