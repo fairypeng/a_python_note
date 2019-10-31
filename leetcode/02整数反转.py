@@ -53,6 +53,6 @@ class Solution(object):
 
 s = Solution()
 data = s.reverse(-1230)
-print data
+print(data)
 datas = s.reverse2(-1230)
-print datas
+print(datas)
